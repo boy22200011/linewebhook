@@ -4,8 +4,9 @@ const app = express();
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  return res.status(200).json({ code: 0, message: "this is get!" });
-});
+    res.status(200).send("Service is running!");
+  });
+  
 
 app.post('/getTestStr', (req, res) => {
   return res.status(200).json({ code: 0, message: "Hello World!" });
