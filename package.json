@@ -1,15 +1,15 @@
 {
   "name": "linewebhook",
   "version": "1.0.0",
-  "description": "test line webhook on microsoft azure",
+  "description": "Test LINE Webhook on Microsoft Azure",
   "type": "module",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
-    "start":"node main.js"
+    "start": "node main.js"
   },
-  "author": "",
+  "author": "Your Name",
   "license": "ISC",
-  "devDependencies": {
+  "dependencies": {
     "express": "^4.21.1"
   }
 }
