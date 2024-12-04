@@ -13,6 +13,8 @@ import { AppController } from "./app.controller"
 import { AppService } from "./app.service"
 import { AuthModule } from "./modules/auth/auth.module"
 import { UsersModule } from "./modules/users/users.module"
+
+import { LineModule } from "./modules/line/line.module"
 @Module({
   imports: [
     // api modules
@@ -23,6 +25,7 @@ import { UsersModule } from "./modules/users/users.module"
     AxiosModule,
     LodashModule,
     KnexModule,
+    LineModule,
     // environment modules
     ConfigModule.forRoot({
       envFilePath: [`.env.${process.env.NODE_ENV || "development"}`, ".env"],
