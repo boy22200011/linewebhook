@@ -1,0 +1,13 @@
+{
+  "db": {
+    "mysql": {
+      "client": "mysql2",
+      "connection": {
+        "host": "prod-db-host",
+        "user": "prod-username",
+        "password": "prod-password",
+        "database": "prod-database"
+      }
+    }
+  }
+}
