@@ -21,4 +21,15 @@ export class LineController {
     await this.lineService.handleEvent(body.events)
     return "OK"
   }
+
+  @Post("getGroupName")
+  async getGroupName(@Body() body: any): Promise<any> {
+    const groupName = await this.lineService.getGroupName(body.groupId)
+    return {
+      code: 0,
+      data: {
+        groupName
+      }
+    }
+  }
 }
