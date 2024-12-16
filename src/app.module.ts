@@ -1,3 +1,4 @@
+import { CryptoModule } from "./common/crypto/crypto.module"
 // core
 import { Module } from "@nestjs/common"
 import { ConfigModule } from "@nestjs/config"
@@ -17,6 +18,7 @@ import { UsersModule } from "./modules/users/users.module"
 import { LineModule } from "./modules/line/line.module"
 @Module({
   imports: [
+    CryptoModule,
     // api modules
     AuthModule,
     UsersModule,
