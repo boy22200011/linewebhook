@@ -4,9 +4,17 @@ import { LineService } from "./line.service"
 import { Request } from "express"
 import { validateSignature } from "@line/bot-sdk"
 
+import { ConfigService } from "@nestjs/config"
+
 @Controller("line")
 export class LineController {
-  constructor(private readonly lineService: LineService) {}
+  private _lineSecret: string
+  constructor(
+    private readonly lineService: LineService,
+    configService: ConfigService
+  ) {
+    this._lineSecret = configService.get<string>("LINE_BOT_SECRET")
+  }
 
   @Post("webhook")
   async webhook(@Body() body: any, @Headers() headers: any, @Req() request: Request): Promise<any> {
@@ -14,22 +22,11 @@ export class LineController {
 
     const bodyString = JSON.stringify(body)
 
-    if (!validateSignature(bodyString, "db08565400fd1a27ab38b707dcefbdc3", signature)) {
+    if (!validateSignature(bodyString, this._lineSecret, signature)) {
       throw new Error("Invalid signature")
     }
 
     await this.lineService.handleEvent(body.events)
     return "OK"
-  }
-
-  @Post("getGroupName")
-  async getGroupName(@Body() body: any): Promise<any> {
-    const groupName = await this.lineService.getGroupName(body.groupId)
-    return {
-      code: 0,
-      data: {
-        groupName
-      }
-    }
   }
 }
