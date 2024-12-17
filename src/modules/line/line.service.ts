@@ -11,19 +11,22 @@ import {
 } from "@line/bot-sdk"
 import { ConfigService } from "@nestjs/config"
 import { CryptoService } from "../../common/crypto/crypto.service"
+import { KnexService } from "../../common/knex/knex.service"
 @Injectable()
 export class LineService {
   private client: Client
   private _cryptoService: CryptoService
+  private _knexService: KnexService
 
   // 建構子，初始化 Line 客戶端並使用設定檔中的 token 和密鑰
-  constructor(configService: ConfigService, cryptoService: CryptoService) {
+  constructor(configService: ConfigService, cryptoService: CryptoService, knexService: KnexService) {
     this.client = new Client({
       channelAccessToken: configService.get<string>("LINE_BOT_ACCESS_TOKEN"),
       channelSecret: configService.get<string>("LINE_BOT_SECRET")
     })
 
     this._cryptoService = cryptoService
+    this._knexService = knexService
   }
 
   // 事件處理器映射表，用來處理不同的事件類型

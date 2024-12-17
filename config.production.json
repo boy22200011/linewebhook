@@ -8,6 +8,19 @@
         "password": "prod-password",
         "database": "prod-database"
       }
+    },
+    "mssql": {
+      "client": "mssql",
+      "connection": {
+        "server": "linebotdatabase.database.windows.net",
+        "database": "linebotdb",
+        "user": "microsys",
+        "password": "Vv25680117",
+        "options": {
+          "encrypt": true,
+          "trustServerCertificate": false
+        }
+      }
     }
   }
 }
