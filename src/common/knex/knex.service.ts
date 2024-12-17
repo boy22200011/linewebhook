@@ -19,7 +19,7 @@ export class KnexService {
   }
 
   // 返回 Knex 實例，讓其他服務可以使用它來執行 SQL 查詢
-  get Knex() {
+  getKnex() {
     return this.knexInstance
   }
 }

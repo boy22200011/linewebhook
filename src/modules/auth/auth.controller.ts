@@ -1,5 +1,6 @@
 import { Controller, Post, Body } from "@nestjs/common"
 import { AuthService } from "./auth.service"
+
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -13,7 +14,16 @@ export class AuthController {
   async genKey(
     @Body() info: { licencekey: string; machineInfo: { machineId: string; cpuSerial: string; diskSerial: string } }
   ) {
-    return this.authService.genPPeId(info)
+    const getSerialNumberData = await this.authService.getSerialNumber(info.licencekey)
+
+    if (getSerialNumberData.status === 1) {
+      return {
+        code: 0,
+        message: "此序號已使用"
+      }
+    }
+    const ppeInfo = this.authService.genPPeId(info)
+    return ppeInfo
   }
 
   // @Post("getTokenData")

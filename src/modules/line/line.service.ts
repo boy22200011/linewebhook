@@ -15,18 +15,17 @@ import { KnexService } from "../../common/knex/knex.service"
 @Injectable()
 export class LineService {
   private client: Client
-  private _cryptoService: CryptoService
-  private _knexService: KnexService
 
   // 建構子，初始化 Line 客戶端並使用設定檔中的 token 和密鑰
-  constructor(configService: ConfigService, cryptoService: CryptoService, knexService: KnexService) {
+  constructor(
+    configService: ConfigService,
+    private readonly cryptoService: CryptoService,
+    private readonly knexService: KnexService
+  ) {
     this.client = new Client({
       channelAccessToken: configService.get<string>("LINE_BOT_ACCESS_TOKEN"),
       channelSecret: configService.get<string>("LINE_BOT_SECRET")
     })
-
-    this._cryptoService = cryptoService
-    this._knexService = knexService
   }
 
   // 事件處理器映射表，用來處理不同的事件類型
@@ -39,7 +38,7 @@ export class LineService {
 
   // 指令處理器映射表，用來處理特定的文字指令
   private readonly commandHandler: Record<string, (event: WebhookEvent & MessageEvent) => any> = {
-    "@綁定PPEID": (event) => this.bindHandler(event)
+    "@技安註冊工地": (event) => this.bindHandler(event)
   }
 
   // 根據群組 ID 取得群組名稱
@@ -96,12 +95,30 @@ export class LineService {
 
   // 進入群組事件的空處理器（未實作）
   private async joinGroupHandler(event: WebhookEvent & JoinEvent) {
-    console.log("Line bot join group")
+    const source: EventSource = event.source
+    if (source.type === "group") {
+      const groupName = await this.getGroupName(source.groupId)
+      const knex = this.knexService.getKnex()
+
+      const getLineGroup = await knex("LineGroup").select({ id: "ID" }).where("LineGroupID", source.groupId).limit(1)
+
+      if (getLineGroup.length > 0) {
+        // 群組已存在更新groupName即可
+        await knex("LineGroup").update({ GroupName: groupName }).where("ID", getLineGroup[0].id)
+      } else {
+        await knex("LineGroup").insert({ GroupName: groupName, LineGroupID: source.groupId, Status: 1 })
+      }
+    }
   }
 
   // 離開群組事件的空處理器（未實作）
   private async leaveGroupHandler(event: WebhookEvent & LeaveEvent) {
-    console.log("Line bot leave group")
+    const source: EventSource = event.source
+    if (source.type === "group") {
+      const knex = this.knexService.getKnex()
+
+      await knex("LineGroup").delete().where("LineGroupID", source.groupId)
+    }
   }
 
   // 處理文字訊息並根據指令執行對應的處理
@@ -128,10 +145,52 @@ export class LineService {
             const ppeid = match[1]
 
             // ppeid 驗證是否合法
-            const encry_ppeid = this._cryptoService.decrypt(ppeid)
+            const encry_ppeid = this.cryptoService.decrypt(ppeid)
 
             const jsonObj = JSON.parse(encry_ppeid)
             // TODO: DB操作
+            const knex = this.knexService.getKnex()
+
+            // 檢查序號存不存在
+            const checkSerialNumber = await knex("SerialNumberList")
+              .select({ id: "ID", status: "Status" })
+              .where("SerialNumber", jsonObj.licencekey)
+
+            if (checkSerialNumber.length <= 0) {
+              await this.replyMessage(event, { type: "text", text: `PPEID不正確` })
+            }
+
+            if (checkSerialNumber[0].status === 1) {
+              await this.replyMessage(event, { type: "text", text: `序號已使用` })
+            }
+
+            // 找尋回應人群組並跟序號做綁定
+            const getLineUser = await knex("LineUsers")
+              .select({ id: "ID", lineGroupID: "LineGroupID" })
+              .where("LineUserID", event.source.userId)
+              .limit(1)
+
+            if (getLineUser.length <= 0) await this.replyMessage(event, { type: "text", text: `使用者不存在` })
+
+            const getLineGroup = await knex("LineGroup")
+              .select({ id: "ID" })
+              .where("LineGroupID", getLineUser[0].lineGroupID)
+
+            if (getLineGroup.length <= 0) await this.replyMessage(event, { type: "text", text: `找不到所在群組` })
+
+            // 由於DB已設定 GroupID and SerialID是複合索引 所以重複一定會錯
+            // 1,1 就不能在新增 1,1
+            await knex("LineGroupAndSerialMapping").insert({
+              GroupID: getLineGroup[0].id,
+              SerialID: checkSerialNumber[0].id
+            })
+            // 更新資料庫 將序號標記啟用
+            await knex("SerialNumberList")
+              .update({
+                Status: 1,
+                MachineInfo: JSON.stringify(jsonObj.machineInfo)
+              })
+              .where("SerialNumber", jsonObj.licencekey)
 
             // 回應綁定成功
             await this.replyMessage(event, { type: "text", text: `綁定成功` })
@@ -139,7 +198,7 @@ export class LineService {
             return this.replyInvalidFormat(event)
           }
         } catch (err) {
-          await this.replyMessage(event, { type: "text", text: `PPEID不正確` })
+          await this.replyMessage(event, { type: "text", text: `綁定失敗` })
         }
       } else {
         // 無法確定來源
@@ -153,12 +212,36 @@ export class LineService {
 
     // 先判斷是不是群組
     if (source.type === "group") {
-    } else if (source.type === "user") {
-      // 來自個人
+      // 來自群組
+      // 紀錄打指令的人
+      const knex = this.knexService.getKnex()
+
+      const getLineUsers = await knex("LineUsers")
+        .select({
+          id: "ID",
+          lineUserId: "LineUserID"
+        })
+        .where("LineUserID", event.source.userId)
+        .limit(1)
+
+      if (getLineUsers.length <= 0) {
+        await knex("LineUsers").insert({
+          LineGroupID: source.groupId,
+          LineUserID: event.source.userId
+        })
+      }
+
+      // 發送給個人
       await this.client.pushMessage(event.source.userId, {
         type: "text",
         text: "請輸入PPEID，格式: PPEID: XXXXXX"
       })
+    } else if (source.type === "user") {
+      // // 來自個人
+      // await this.client.pushMessage(event.source.userId, {
+      //   type: "text",
+      //   text: "請輸入PPEID，格式: PPEID: XXXXXX"
+      // })
     } else {
       // 無法確定來源
       // TODO: 這邊可以寫log

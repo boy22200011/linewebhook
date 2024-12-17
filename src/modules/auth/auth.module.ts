@@ -7,6 +7,7 @@ import { JwtStrategy } from "./jwt.strategy"
 import { ConfigModule, ConfigService } from "@nestjs/config"
 import { CryptoModule } from "../../common/crypto/crypto.module"
 import { CryptoService } from "../../common/crypto/crypto.service"
+import { KnexService } from "../../common/knex/knex.service"
 @Module({
   imports: [
     CryptoModule,
@@ -21,7 +22,7 @@ import { CryptoService } from "../../common/crypto/crypto.service"
     })
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, CryptoService],
+  providers: [AuthService, JwtStrategy, CryptoService, KnexService],
   exports: [AuthService]
 })
 export class AuthModule {}
