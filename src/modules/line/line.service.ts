@@ -10,17 +10,20 @@ import {
   EventSource
 } from "@line/bot-sdk"
 import { ConfigService } from "@nestjs/config"
-
+import { CryptoService } from "../../common/crypto/crypto.service"
 @Injectable()
 export class LineService {
   private client: Client
+  private _cryptoService: CryptoService
 
   // 建構子，初始化 Line 客戶端並使用設定檔中的 token 和密鑰
-  constructor(configService: ConfigService) {
+  constructor(configService: ConfigService, cryptoService: CryptoService) {
     this.client = new Client({
       channelAccessToken: configService.get<string>("LINE_BOT_ACCESS_TOKEN"),
       channelSecret: configService.get<string>("LINE_BOT_SECRET")
     })
+
+    this._cryptoService = cryptoService
   }
 
   // 事件處理器映射表，用來處理不同的事件類型
@@ -113,21 +116,27 @@ export class LineService {
         // 單純訊息
         const message = textEventMessage.text
 
-        const regex = /^PPEID:\s*(\S+)$/
+        try {
+          const regex = /^PPEID:\s*(\S+)$/
 
-        const match = message.match(regex)
+          const match = message.match(regex)
 
-        if (match) {
-          const ppeid = match[1]
+          if (match) {
+            const ppeid = match[1]
 
-          // TODO: ppeid 驗證是否合法
+            // ppeid 驗證是否合法
+            const encry_ppeid = this._cryptoService.decrypt(ppeid)
 
-          // TODO: DB操作
+            const jsonObj = JSON.parse(encry_ppeid)
+            // TODO: DB操作
 
-          // 回應綁定成功
-          await this.replyMessage(event, { type: "text", text: `綁定成功` })
-        } else {
-          return this.replyInvalidFormat(event)
+            // 回應綁定成功
+            await this.replyMessage(event, { type: "text", text: `綁定成功` })
+          } else {
+            return this.replyInvalidFormat(event)
+          }
+        } catch (err) {
+          await this.replyMessage(event, { type: "text", text: `PPEID不正確` })
         }
       } else {
         // 無法確定來源
