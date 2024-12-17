@@ -93,7 +93,7 @@ export class LineService {
     // await this.replyMessage(event, this.createButtonTemplate())
   }
 
-  // 進入群組事件的空處理器（未實作）
+  // 進入群組事件的空處理器
   private async joinGroupHandler(event: WebhookEvent & JoinEvent) {
     const source: EventSource = event.source
     if (source.type === "group") {
@@ -103,21 +103,24 @@ export class LineService {
       const getLineGroup = await knex("LineGroup").select({ id: "ID" }).where("LineGroupID", source.groupId).limit(1)
 
       if (getLineGroup.length > 0) {
-        // 群組已存在更新groupName即可
-        await knex("LineGroup").update({ GroupName: groupName }).where("ID", getLineGroup[0].id)
+        await knex("LineGroup").update({ GroupName: groupName, Status: 1 }).where("ID", getLineGroup[0].id)
       } else {
         await knex("LineGroup").insert({ GroupName: groupName, LineGroupID: source.groupId, Status: 1 })
       }
     }
   }
 
-  // 離開群組事件的空處理器（未實作）
+  // 離開群組事件的空處理器
   private async leaveGroupHandler(event: WebhookEvent & LeaveEvent) {
     const source: EventSource = event.source
     if (source.type === "group") {
       const knex = this.knexService.getKnex()
-
-      await knex("LineGroup").delete().where("LineGroupID", source.groupId)
+      // 群組關閉
+      await knex("LineGroup")
+        .update({
+          Status: 0
+        })
+        .where("LineGroupID", source.groupId)
     }
   }
 
